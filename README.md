@@ -183,7 +183,7 @@ arr3은 모두 숫자형 데이터이므로 number로 추론이 되고, arr4는 
 const array = [123, 4, 5]
 array[3].toFixed() // array[3]이 undefined임에도 불구하고 에러가 없음
 ```
-위 예시의 주석에 써있다싶이 array[3]이 undefined임에도 불구하고 에러가 발생하지 않는다. 원인은 array가 number[]로 추론되면서 array[3]도 숫자형으로 추론되기 때문.  
+위 예시의 주석에 써있듯이 array[3]이 undefined임에도 불구하고 에러가 발생하지 않는다. 원인은 array가 number[]로 추론되면서 array[3]도 숫자형으로 추론되기 때문.  
 이럴때 **튜플**을 사용하면 해결 할 수 있다.  
 각 요소 자리에 타입이 고정되어 있는 배열을 튜플이라고 부른다.
  ```ts
