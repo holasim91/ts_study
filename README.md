@@ -243,3 +243,65 @@ tuple = [7, 'no'] //Type 'string' is not assignable to type 'boolean | undefined
 ```
 타입 뒤에 ?를 붙이는 것이다. 이는 옵셔널 수식어로, 해당 자리에 값이 있어도 그만, 없어도 그만이라는 뜻이다.  
 따라서 ?이 없었다면 길이와 타입이 고정이 되어야하는데 틀린 타입을 넣지 않는 이상 에러가 발생하지 않는다.(undefiend 제외)
+
+## 2.5 타입으로 쓸 수 있는 것을 구분하자
+타입을 공부하다보면 값(value)과 타입이 헷갈릴 수 있다. 개인적으로 리터럴 타입 때문에 어떤 값을 타입으로 사용할수 있을지 없을지 헷갈리고, 타입을 값으로도 사용할 수 있는지도 헷갈린다.  
+값은 일반적으로 JS에서 사용하는 값을 가리키고, 타입은 타입을 위한 구문에서 사용하는 타입을 말한다.
+타입을 값으로는 사용할 수 없기에 타입으로 사용할 수 있는 값과 타입으로 사용할 수 없는 값만 구분하면 된다.
+
+이전 절에서 봤듯이 대부분의 리터럴 값은 타입으로 사용할 수 있다. 반대로 변수의 이름은 타입으로 사용할 수 없다. 다만 Date, Math, Error, String, Object, Number, Boolean과 같은 내장객체는 타입으로 사용할 수 있다.
+```ts
+const date:Date = new Date()
+const math:Math = Math;
+const st:String= 'hi'
+```
+그러나 String, Object, Number, Boolean, Symbol을 타입으로 사용하는건 지양하는게 좋다.
+```ts
+function add(x: Number, y:Number){ return x+y } // Operator '+' cannot be applied to types 'Number' and 'Number'.
+const str1:String = 'hi'
+const str2:string = str1 // Type 'String' is not assignable to type 'string'. 'string' is a primitive, but 'String' is a wrapper object. Prefer using 'string' when possible.
+const obj:Object = 'What?'
+```
+이렇게 예시에 나와있듯이 Number간에는 연산자를 사용할 수 없고, string에 String타입을 대입할 수 없다. 마지막으로 obj변수는 Object임에도 불구하고 문자열이 대입 가능하다.
+따라서 string, number, boolean, object, symbol로 통일해서 쓰자.
+
+만약 헷갈린다면 일단 타입으로 표기해보자.
+```ts
+function add(x:number,y:number){return x + y}
+const add2:add = (x:number, y:number) => x + y 
+// 'add' refers to a value, but is being used as a type here. Did you mean 'typeof add'?
+// const add2:typeof add= (x:number, y:number) => x + y 로 수정
+```
+이렇게 TS가 친절히 에러메시지로 알려준다.  
+위의 예시같은 경우는 add는 값이지만 타입으로 사용했다는 뜻이다. 그리고 typeof를 앞에 붙여서 타입으로 사용할 수 있다는 뜻이다.
+
+그러나 함수의 호출을 타입으로 사용할 수 없다. 함수의 반환값을 타입으로 사용하고 싶을 때 아래와 같이 코드를 작성하면 에러가 발생한다.
+```ts
+function add(x:number, y:number){return x + y};
+const result1: add(1, 2) = add(1, 2)
+/*
+ * 'add' refers to a value, but is being used as a type here. Did you mean 'typeof add'?
+ * The left-hand side of an assignment expression must be a variable or a property access.(2364)
+ */
+
+const result2: typeof add(1, 2) = add(1,2)
+/*
+ * The left-hand side of an assignment expression must be a variable or a property access.(2364)
+ */
+```
+에러메시지에서는 add는 타입이 아니라 값이고, = 연산자의 왼쪽은 병수이거나 속성 접근(property access)만 된다고 한다.  
+즉 obj = 'abc' 혹은 obj.x = 'abc' 같은 것만 가능하다는 뜻이다. 지금 같은 상횡에선 = 연산자 왼쪽에 add(1,2)같은 함수 호출이 올 수 없다는 얘기다.  
+(함수의 반환값을 타입으로 사용하는건 뒤에가서 배울 것이다.)
+
+클래스는 조금 다르다. 클래스의 이름은 typeof 없이도 타입으로 사용할 수 있다.
+```ts
+class Person{
+    name: string;
+    constructor(name: string){
+        this.name = name
+    }
+}
+
+const person:Person = new Person('lucifer')
+```
+
