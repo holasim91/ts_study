@@ -160,3 +160,86 @@ arr.push(4) // Property 'push' does not exist on type 'readonly [1, 2, "three"]'
 이렇게 타입이 고정되어서 추론되는걸 볼 수 있다. obj의 속성 앞과 arr배열에 readonly라는 수식어가 붙어있는데 해당 수식어가 붙으면 해당 값은 변경 할 수가 없다.
 
 ## 2.4 배열 말고 튜플도 있다.
+먼저 배열의 타입을 간단히 표기하는 방법부터 알아보자.
+```ts
+const arr1:string[] = ['a','b','c']
+const arr2:Array<number> = [1,2,3]
+arr1.push(1) //Argument of type 'number' is not assignable to parameter of type 'string'.
+```
+배열은 끝이 없는 값들이 들어갈 수 있는데 그 것들을 하나하나 타이핑 해주는 것은 불가능하다.
+그래서 위의 예시와 같이 타입[] 혹은 Array<타입>으로 타이핑을 한다. 여기서 타입은 요소의 타입을 의미하고, 다른 타입은 요소가 될 수 없다.
+<>표기법은 제네릭이라고 부른다.(나중에 자세히 알아볼 예정)
+
+TS는 배열을 추론할 때 요소들의 타입을 토대로 추론한다. 빈배열은 any[]로 추론되니 주의하자.
+ ```ts
+const arr3 = [1, 3, 5] //const arr3: number[]
+const arr4 = [1,'3', 5] //const arr4: (string | number)[]
+const arr5 = [] //const arr5: any[] -> 이 또한 변화를 줄 수 있으니 any로 추론되는것인가..?
+```
+arr3은 모두 숫자형 데이터이므로 number로 추론이 되고, arr4는 정수형과 문자형 자료형이 있어서 (string|number)[]로 추론한다.
+
+그러나 이 추론에도 한계가 있다.
+```ts
+const array = [123, 4, 5]
+array[3].toFixed() // array[3]이 undefined임에도 불구하고 에러가 없음
+```
+위 예시의 주석에 써있다싶이 array[3]이 undefined임에도 불구하고 에러가 발생하지 않는다. 원인은 array가 number[]로 추론되면서 array[3]도 숫자형으로 추론되기 때문.  
+이럴때 **튜플**을 사용하면 해결 할 수 있다.  
+각 요소 자리에 타입이 고정되어 있는 배열을 튜플이라고 부른다.
+ ```ts
+const tuple:[number, string, boolean] = [1, 'a', true]
+tuple[0] = 3
+tuple[1] = false // Type 'boolean' is not assignable to type 'string'.
+tuple[3] = 'no'
+/*
+ * Type '"no"' is not assignable to type 'undefined'.
+ * Tuple type '[number, string, boolean]' of length '3' has no element at index '3'.
+ */
+tuple.push('YES')
+```
+[]안에 정확한 타입을 하나씩 입력하면 되고, 표기하지 않은 자리는 undefined타입이 된다.  
+tuple[0]은 숫자형만, [1]은 문자형만, [2]는 불린형만 가능하고, 그 뒤로는 undefined타입이 된다.
+
+그런데 이상하게도 push, pop, unshift, shift 메서드를 통해 배열에 요소를 추가, 제거하는 것은 막지 않는다.
+물론 해당 인덱스에 접근을 할 수 없으니 의미가 없는 짓이긴 하지만, 이것 조차 막으려면 readonly 수식어를 붙여줘야한다.
+ ```ts
+const tuple:readonly [number, string, boolean] = [1, 'a', true]
+tuple.push(4) // Property 'push' does not exist on type 'readonly [number, string, boolean]'.
+
+// 따라서 예시였던 아래의 코드를 아래와 같이 수정하면 된다.
+const array:[number, number, number] = [123, 4, 5]
+array[3].toFixed() //Object is possibly 'undefined'.
+```
+이렇듯 배열보다 정교한 타입검사를 원하면 튜플을 사용하면 된다.  
+
+튜플은 각 요소 자리에 타입이 고정되어있는 것이지 길이는 가변적이다. 그럴때 타입을 어떻게 써줘야할까?
+ ```ts
+const strNumBools:[string, number, ...boolean[]] = ['hi', 1, true, true, true]
+const strNumsBool:[string, ...number[], boolean] = ['hi', 1, 2, 3, 4, 5, false]
+const strsNumBool:[...string[], number, boolean] = ['a', 'b', 'c', 100, true]
+```
+위와 같이 ...타입[]를 스프레드 문법을 사용하여 특정 타입이 연달아 나올수 있음을 알리면 된다.  
+심지어 스프레드 문법을 사용을 해도 TS는 타입 추론이 가능하다.
+```ts
+const arr1 = ['hi', false]
+const arr = [33, ...arr1] //const arr: (string | number | boolean)[]
+```
+구조분해 할당에서는 나머지 속성 문법(...rest)을 사용할 수있는데, 이 경우에도 TS가 추론을 한다.
+```ts
+const [a, ...rest1] = ['hi', 1, 23, 3434] 
+//const a: string 
+//const rest1: [number, number, number]
+// 명시적 타이핑
+const [b, ...rest2]:[string, ...number[]] = ['bye', 1, 2, 3]
+// const b: string
+// const rest2: number[]
+```
+또 하나 특별한 표기가 있다.
+```ts
+let tuple:[number, boolean?, string?] = [1, false, 'hi']
+tuple = [3, true]
+tuple = [5]
+tuple = [7, 'no'] //Type 'string' is not assignable to type 'boolean | undefined'.
+```
+타입 뒤에 ?를 붙이는 것이다. 이는 옵셔널 수식어로, 해당 자리에 값이 있어도 그만, 없어도 그만이라는 뜻이다.  
+따라서 ?이 없었다면 길이와 타입이 고정이 되어야하는데 틀린 타입을 넣지 않는 이상 에러가 발생하지 않는다.(undefiend 제외)
