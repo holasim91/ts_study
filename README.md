@@ -304,4 +304,291 @@ class Person{
 
 const person:Person = new Person('lucifer')
 ```
+## 2.6 유니언 타입으로 OR 관계를 표현하자
+TS에서는 타입을 위한 새로운 연산자가 있다. 바로 유니언 타입과(Union Type)과 이 유니언 타입을 표기하기 위한 파이프 연산자(|)다.  
+JS의 비트 연산자와는 다른 역할을 수행한다. 앞에서 배열을 할 때 봤던 연산자이다.
 
+유니언 타입은 하나의 변수가 여러 타입을 가질 수 있는 가능성을 표시하는 것이다.
+ ```ts
+let strOrNum: string | number = 'hi' // let strOrNum: string | number
+strOrNum = 123
+
+const arr4 = [1, '3', 5] // const arr4: (number | string)[]
+```
+TS가 배열의 타입을 추론할 때 요소의 타입이 string 혹은 number이므로  (number | string)[]로 추론했다. 이때 꼭 소괄호가 필요하다. 소괄호를 빼고  number | string 가 되면 문자열 혹은 '숫자의 배열이 되어버린다.' 이는 '문자열 혹은 숫자열' 배열과 완전히 다른 결과다.
+
+## 2.7 TS에만 존재하는 타입들
+### 1. any  
+any는 TS에서 지양해야하는 타입이다.
+```ts
+let str:any = 'hello'
+const result = str.toFixed() //const result: any
+```
+위의 예시 코드를 보면, str은 문자열임에도 불구하고 toFixed 메서드를 사용하고 있다. 그러나 TS는 에러를 표시하지 않고 있다. 그 원인은 any 타입이 모든 동작을 허용하기 때문이다. any를 쓰면 TS가 타입 검사를 하지 못하기 때문에 TS를 쓰는 의미가 없어진다.  
+게다가 any타입을 통해 파생되는 결과물도 any타입이 된다. 위의 예시에서 result의 타입이 any로 추론 되는 것을 보면 알 수 있다. 따라서 TS에서 any를 사용하는 것은 지양해야한다.  
+
+직접 any타입을 쓸 일이 없다면 언제 any타입을 보게 될까? 바로 TS가 타입을 any로 추론할 때다. 대부분의 경우 타입이 any로 추론되면 implictAny에러가 발생한다.
+```ts
+function plus(x,y){ //Parameter 'x' implicitly has an 'any' type., Parameter 'y' implicitly has an 'any' type.
+    return x + y
+}
+```
+그러나 any여도 에러가 발생하지 않을 때가 있다. 예를 들어 빈 배열을 선언한 경우다.
+```ts
+const arr = [] //const arr: any[]
+```
+이럴 경우 배열에 대한 타입 검사가 제대로 이루어지지 않으므로 우리가 직접 배열에 정확한 타입을 표기해야한다.  
+**any 타입은 타입 검사를 포기한다는 것과 같으니 TS가 any로 추론하는 타입이 있다면 직접 표기하자.**  
+그런데 any[]로 추론된 배열에는 신기한 점이 하나 있다. 배열에 push 메서드나 인덱스로 요소를 추가할 때마다 추론하는 타입이 바뀐다는 것이다. concat 메서드에서는 에러가 발생한다.
+
+```ts
+const arr = [] // const arr: any[]
+arr.push('1')
+arr; // const arr: string[]
+arr.push(3)
+arr; // const arr: (string | number)[]
+
+const arr2 = []
+arr2[0] = 1
+arr2 // const arr2: number[]
+arr2[1] = 'hi'
+arr2 // const arr2: (string | number)[]
+
+const arr3 = [] // Variable 'arr3' implicitly has type 'any[]' in some locations where its type cannot be determined
+const arr4 = arr3.concat('123') // Variable 'arr3' implicitly has an 'any[]' type.
+```
+다만 pop으로 요소를 제거할 때는 이전 추론으로 되돌아가지 못한다.
+```ts
+const arr = [] // const arr: any[]
+arr.push('1')
+arr; // const arr: string[]
+arr.pop()
+arr; // const arr: string[]
+```
+any는 숫자나 문자열 타입과 연산할 떄 타입이 바뀌기도 한다.
+```ts
+const a:any = '123'
+
+const an1 = a + 1 // const an1: any
+const nb1 = a - 1 // const nb1: number
+const nb2 = a * 1 // const nb2: number
+const nb3 = a / 1 // const nb3: number
+const st1 = a + '1' // const st1: string
+```
+어떤 값에 -, *, / 연산을 할 때 숫자로 바뀌어서 number타입이 되고, 문자열을 더하면 문자열이 되어서 string타입이 된다. 다만 숫자를 더할 때 a가 숫자면 number가 되지만, a가 문자열이면 string이 되니 TS는 그냥 any로 추론한다.  
+TS가 명시적으로 any를 반환하는 경우가 있다. 대표적으로 JSON.parse와 fetch 함수가 있다.
+```ts
+fetch('url').then((res) => {
+    return res.json()
+}).then((result) =>{ // (parameter) result: any
+
+})
+
+const result = JSON.parse('{"hello":"json"}') //const result: any
+```
+이때 타입을 직접 타이핑을 해서 모든 타입이 any가 되는 것을 방지하자.
+```ts
+fetch('url').then<{data:string}>((res) => {
+    return res.json()
+}).then((result) =>{ 
+    /*
+      (parameter) result: {
+        data: string;}
+     */
+
+});
+
+const result:{hello:string} = JSON.parse('{"hello":"json"}') //const result: {hello: string;}
+```
+여기서 나온 것들은 나중에가서 좀 더 자세히 배운다.
+
+### 2. unknown
+unknown은 any와 비슷하게 모든 타입을 대입할 수 있지만, 그 후 어떠한 동작도 수행할 수 없다.
+```ts
+const a: unknown = 'hello'
+const b: unknown = 'world'
+a + b // 'a' is of type 'unknown', 'b' is of type 'unknown'
+a.slice() // 'a' is of type 'unknown'.
+```
+unknown타입 이라 a,b 변수를 활용한 모든 동작이 에러로 처리된다. 그래서 unknown타입을 직접 표시할 경우는 거의 없고, 대부분 try catch문에서 unknown을 보게 된다.
+```ts
+try{
+
+}catch(e){ // var e: unknown
+    console.error(e.message) // 'e' is of type 'unknown'
+}
+```
+e가 unknown이므로 그 뒤에 어떠한 동작도 수행할 수 없다. 게다가 catch문의 e는 any와 unknown 외의 타입을 직접 표기할 수 없다. 이럴 때 as로 타입을 주장(Type Assertion)할 수 있다.
+```ts
+try{
+
+}catch(e){ // var e: unknown
+    const error = e as Error
+    console.error(error.message) // const error: Error
+}
+```
+이렇게 e를 Error타입으로 강제 지정했다. 그 후에는 e가 Error로 인식되어서 관련 기능이 동작한다.  
+또 다른 Type Assertion 방법으로는 <>을 이용하는 장법이 있다. 배열에서 사용하는 <>과는 다른 의미다.
+```ts
+try{
+
+}catch(e){ // var e: unknown
+    const error = <Error>e // TS Config 메뉴에서 JSX 옵션인 None이어야함
+    console.error(error.message) // const error: Error
+}
+```
+그러나 이 방법은 리액트의 JSX와 충돌하니 as로 주장하는 것을 권장한다.  
+또, 항상 as 연산자를 사용해서 다른 타입으로 주장할 수 있는 것은 아니다.
+```ts
+const a: number = '123' as number; 
+/*
+Conversion of type 'string' to type 'number' may be a mistake because neither type sufficiently overlaps with the other. 
+If this was intentional, convert the expression to 'unknown' first.
+ */
+```
+string에서 number로 타입을 바꾸는 건 실수같은디 라는 에러 메시지를 띄운다. 실제로 불가능 상황이 맞기도 하다. 그럼에도 불구하고 강제로 변화하는 방법이 있다.
+```ts
+const a: number = '123' as unknown as number; 
+```
+에러메시지에서 눈치를 챘을지도 모르지만, 먼저 unknown으로 주장한 후에 원하는 타입으로 다시 주장하면 된다. 다만 강제로 주장한 것이니 책임은 본인이 져야한다.  
+as 같은 것이 하나 더있는데 !(non-null assertion)연산자다. 연산자의 이름은 null이 아님을 주장하는 연산자이지만, null뿐만 아니라 undefined도 아님을 주장할 수 있다.
+```ts
+function a(param: string | null | undefined){
+    param.slice(3) //'param' is possibly 'null' or 'undefined'
+}
+```
+위의 함수는 매개변수 param이 null이거나 undefined일 수도 있으니 string의 메서드인 slice를 사용할 수 없다. 이럴 때 param이 null or undefined가 아닌게 확실하다면 해당 값 뒤에 ! 연산자를 붙이면 된다.
+```ts
+function a(param: string | null | undefined){
+    param!.slice(3) 
+}
+```
+그러나 이 경우에도 param이 null or undefined일 수도 있으니 본인 책임하에 사용해아한다.
+
+### 3. void
+void는 JS에도 있는 연산자이긴 한데 TS에서는 타입으로 사연된다.
+```ts
+function noReturn(){} // function noReturn(): void
+```
+함수의 반환값이 없는 경우 반환값이 void 타입으로 추론된다. JS에서는 반환값이 없는 경우 자동으로 undefined가 반환된다. TS도 마찬가지이지만, 타입은 void가 된다.
+```ts
+const func:()=> void = () => 3 // const func: () => void
+const value = func() // const value: void
+const func2 = ():void => 3 // Type 'number' is not assignable to type 'void'.
+const func3: () => void | undefined = () => 3 // Type 'number' is not assignable to type 'void'
+```
+void는 함수의 반환값을 무시하도록 하는 특수한 타입이다. func 함수의 반환값 타입이 void인데 실제로는 3을 반환 하고 있다. 하지만 에러는 발생하지 않는다.
+이렇듯 반환값이 void 타입이라고 해서 함수가 undefined가 아닌다른 값을 반환하는것을 막지 않는다. 하지만 value 변수처럼 void를 반환받은 값의 타입은 void가 되어버린다.
+void타입을 통해 사용자가 이 함수의 반환값을 사용하지 못하게 막을 수 있다.  
+그러나 조심해야 할 점이 있다. func2처럼 반환값의 타입만 따로 표기하는 경우에는 반환값을 무시하지 않는다. func처럼 함수 전체의 타입을 표기해야만 적용 가능하다. 
+func3의 경우에도 반환값의 타입이 void와 다른 타입의 유니언이면 반환값을 무시하지않는다. 즉, () => void만 반환값을 부시하고, ()=> void | undefined 처럼 다른 타입인 경우에는 무시하지 않는다.  
+
+void를 활용하여 반환값을 무시하는 특성은 주로 콜백 함수에 주로 사용한다.
+```ts
+[1,2,3].forEach((v) => v)
+[1,2,3].forEach((v) => console.log(v))
+```
+배열의 forEach 메서드는 콜백 함수를 인수로 받는다. 첫 번째 콜백 함수는 숫자를 반환하고, 두 번째 콜백 함수는 undefined를 반환한다.  
+그렇다면 콜백함수의 타입은 무엇일까? (v:number)=>number | undefined일까? 근데 만약 누군가가 밑과 같이 사용해 버린다면 어떻게 해야할까?
+```ts
+[1,2,3].forEach((v) => v.toString())
+```
+이처럼 forEach의 콜백 함수는 미리 타이핑하기가 곤란하다. 사용자가 그때그때 반환값을 다르게 정할 수 있기 때문이다. 이러한 이유로 콜백함수의 타이핑을 미리 하기 곤라하니 어떠한 반환값이들 다 받을 수 있는 void 타입이 등장하게 되었다.  
+(v:number)=> void로 타이핑 하면 모든 문제가 해결되는 것이다.  
+정리하면 void는 두 가지 목적을 위해 사용한다.
+* 사용자가 함수의 반환값을 사용하지 못하도록 제한한다.
+* 반환값을 사용하지 않는 콜백 함수를 타이핑할 때 사용한다.
+
+### 4. {}, Object
+앞에서 잠깐 봤던 {}이다. 객체가 아니라 null과 undefined를 제외한 모든 값을 의미한다.
+```ts
+const n : {} = null; // Type 'null' is not assignable to type '{}'.
+const u : {} = undefined; // Type 'undefined' is not assignable to type '{}'
+```
+그러나 {} 타입 변수를 실제로 사용하려고 하면 에러가 발생한다.
+```ts
+const obj:{} = {name: 'hola'}
+const arr:{} = []
+const func: {} = () => {};
+obj.name; // Property 'name' does not exist on type '{}'.
+arr[0] //Element implicitly has an 'any' type because expression of type '0' can't be used to index type '{}'. Property '0' does not exist on type '{}'.
+func()// This expression is not callable. Type '{}' has no call signatures.
+```
+{} 타입은 Object 타입과 같다. 이름은 객체지만 객체만 대입할 수 있는 타입은 아니다. object타입과 다르게 **O**bject 이렇게 대문자를 쓴다.
+```ts
+const n : Object = null; // Type 'null' is not assignable to type 'Object'.
+const u : Object = undefined; // Type 'undefined' is not assignable to type 'Object'
+```
+실제로 사용할 수 없으니, {} 타입은 대부분의 경우 쓸모가 없는 타입이다. 이눤 원시값이 아닌 객체를 의미하는 object타입도 마찬가지다.
+```ts
+const obj: object = {name: 'hola'}
+const arr: object = []
+const func: object = () => {};
+obj.name; // Property 'name' does not exist on type 'object'.
+arr[0] //Element implicitly has an 'any' type because expression of type '0' can't be used to index type 'object'. Property '0' does not exist on type '{}'.
+func()// This expression is not callable. Type '{}' has no call signatures.
+```
+타입으로 대입은 가능하지만 사용할 수 없으므로, object로 타이핑하는 의미가 무색하다.  
+{}타입에 null, undefined와 합치면 unknown과 비슷해진다. 실제로 unknown타입을 if문으로 걸러보면 {}이 나온다.
+```ts
+const unk: unknown = 'hi'
+unk;
+if(unk){
+    unk; // const unk: {}
+}else{
+    unk;// const unk: unknown
+}
+```
+{}타입도 직접 사용할 일은 거의 없지만, if문 안에 unknown 타입을 넣을 때 볼 수 있어야 하니 알아두자.
+
+### 5. never
+never 타입에는 어떠한 타입도 대입할 수 없다. 
+```ts
+function neverFunc1(){
+    throw new Error('에-러')
+}
+const result1: never = neverFunc1() // Type 'void' is not assignable to type 'never'.
+
+const neverFunc2 = () => {
+    throw new Error('에-러')
+}
+const result2 = neverFunc2() // const result2: never
+
+const infinite = () =>{ // const infinite: () => never
+    while(true){
+        console.log('beyond the infinity!')
+    }
+}
+```
+함수 선언문과 함수 표현식일 때 차이가 있다. 함수 선언문은 throw를 하더라도 반환값의 타입이 void다. 그러나 함수 표현식은 never가 된다. 
+따라서 result1은 void로 result2는 never로 추론이 된다. result1에 never 타입을 표기해 보면 에러가 발생한다. void 타입은 never 타입에 대입이 불가능하기 때문.  
+infinite 함수의 경우 무한 루프가 들어가있어서 함수가 값을 반환하지 않는다. 이런 경우에도 never가 반환값의 타입이 된다. 무한 루프도 함수 표현식일 때만 never를 반환한다.
+
+다음과 같은 경우에도 never 타입을 확인할 수 있다.
+```ts
+function strOrNum(param: string | number){
+    if(typeof param === 'string'){
+
+    }else if(typeof param === 'number'){
+
+    }else{
+        param; // (parameter) param: never
+    }
+}
+```
+위의 코드의 else문에 있는 param은 string도 number도 아닌 상태가 되어버린다. 사실상 else 문이 실행될 일이 없기에 never로 추론되고, param과 관련한 작업을 할 수 없게 된다.
+
+간혹 never를 직접 써야할 경우도 있다.
+```ts
+function neverFunc1():never{
+    throw new Error('error!')
+}
+function infinite():never{
+    while(true){
+        console.log('moohan')
+    }
+}
+```
+이렇게 함수 선언문에서는 반환값이 void로 추론되니 직접 never로 표기하면 된다.
+
+TS 설정에 따라 배열에서 never를 보는 경우도 있다. TS Config에서 noImplicitAny를 체크 해제하면 배열이 any[]에서 never[]가 된다. 이럴경우 배열을 사용할 수 없으니 직접 타입을 표기해야한다.
