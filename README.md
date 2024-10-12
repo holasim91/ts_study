@@ -592,3 +592,236 @@ function infinite():never{
 이렇게 함수 선언문에서는 반환값이 void로 추론되니 직접 never로 표기하면 된다.
 
 TS 설정에 따라 배열에서 never를 보는 경우도 있다. TS Config에서 noImplicitAny를 체크 해제하면 배열이 any[]에서 never[]가 된다. 이럴경우 배열을 사용할 수 없으니 직접 타입을 표기해야한다.
+
+## 2.8 타입 별칭으로 타입에 이름을 붙이자
+JS에서 특정 값을 특정 변수에 저장해서 사용하던 것처럼 TS에서도 특정 타입을 특정 이름에 저장할 수 있다.
+```ts
+type A = string;
+const str:A = 'hello';
+```
+string이라는 타입을 A라는 이름에 저장했고, 해당 타입을 str변수의 타입을 지정하는데 불러왔다.  
+이렇게 기존 타입에 새로 이름을 붙이는 것을 타입 별칭(type alias)라고 부른다. 타입 별칭은 type 키워드로 선언할 수 있고, 대문자로 시작하는 단어로 만드는 것이 관습이다.
+```ts
+// 이랬는데
+const func1:(value:number, unit:string) => string = (value, unit) => value + unit
+
+// 요래됐슴다
+type ValueWithUnit = (value: number, unit:string) => string;
+const func2:ValueWithUnit = (value, unit) => value + unit
+```
+타입 별칭을 사용하면 가독성이 훨씬 좋아지기 때문에 타입 표기가 조금만 길어져도 분리하는 것이 좋다.  
+함수 외에는 주로 객체나 배열을 타입 별칭으로 분리한다.
+
+```ts
+const person1 : {
+    name:string,
+    age:number,
+    married: boolean
+} = {
+    name:'sim',
+    age:33,
+    married: false
+}
+
+type Person = {
+    name: string,
+    age: number,
+    married: boolean
+}
+
+const person2:Person ={
+    name:'sim',
+    age:33,
+    married:false
+}
+// 요렇게 재사용도 가능하다
+
+const person3:Person={
+    name: 'cho',
+    age:33,
+    married: true
+}
+```
+## 2.9 인터페이스로 객체를 타이핑하자
+객체 타입에 이름을 붙이는 또 하나의 방법이 있다. 바로 인터페이스(interface) 선언을 사용하는 것이다.
+```ts
+interface Person {
+    name: string,
+    age: number;
+    married: boolean
+}
+const person2:Person ={
+    name: 'sim',
+    age: 33,
+    married: false
+}
+const person3:Person={
+    name: 'cho',
+    age: 33,
+    married: true
+}
+```
+인터페이스도 대문자로 시작하는 단어를 사용하는게 관습이다.  
+그런데 한 가지 이상한 점이 있다.  
+이전 타입 별칭 절에서와 다르게 age 부분에서 구분을 , 가 아닌 ; 으로 했다는 것이다. married 속성의 마지막에는 아무것도 없이 줄바꿈만 했다.  
+이렇게 인터페이스의 속성 마지막에는 세미콜론, 콤마, 줄바꿈으로 구분할 수 있다.  
+하지만 이건 한 가지 방식으만 사용하는게 좋다.
+```ts
+// 함수와 배열의 타이핑도 가능하다.
+interface Func{
+    (x:number, y:number): number;
+}
+const add:Func = (x,y) => x + y
+
+interface Arr{
+    length: number,
+    [key: number]: string
+}
+
+const arr:Arr = ['1','2','3']
+```
+인터페이스 속성 키 자리에 [key: number]라는 문법이 있는데 이것은 이 객체의 length를 제외한 속성키가 전부 number라는 의미다.
+이 문법을 인덱스 시그니처(index Signature)라고 부른다.length는 인덱스 시그니처 전에 표기를 했으므로 number가 아니어도 상관 없다.  
+
+참고로 위 예시의 Arr 인터페이스는 정확시 배열을 구현한 것이 아니기 때문에 arr.slice같은 배열의 메서드는 사용 못한다.
+다음 절에서 제대로 만들어 볼것이다.  
+
+일반적으로 객체의 속성 키는 문자열과 심볼만 가능하다. 앞의 예제처럼 숫자도 되는 것 아니냐고 할 수 있지만, 실제론 JS가 다른 자료형의 값이 속성 키로 들어오면 알아서 물자열로 바꿔서 사용하기 때문에 착각하는 것이다.
+이는 다음과 같이 JS코드로 확인해 볼 수 있다.
+```js
+const obj = {
+    '[object Object]': 'wow'
+}
+console.log(({}).toString()) // [object Object]
+console.log(obj[{}]) // wow
+```
+그러나 TS에서는 배열의 타이핑을 위해 속성 키를 number로 하는 것을 허용한다. 따라서 Ts에서 속성키로 가능한 타입은 string, number, symbol이 된다.
+number는 JS에서 string으로 변환된다.  
+
+한 가지 더 알아야 할 것이 있다. 2.7.4절에서 {} 타입은 객체의 타입이 아니라 null과 undefined을 제외한 모든 타입을 의미한다고 했는데, 속성이 없는 인터페이스도 비슷한 역할을 한다.
+```ts
+interface NoProp{}
+
+const obj:NoProp ={
+    why:'No Error'
+}
+
+const what:NoProp = '이게 된다고?'
+const omg:NoProp= null // Type 'null' is not assignable to type 'NoProp'.
+```
+이렇게 null, undefiend를 제외한 값을 대입할 수 있다. 이렇게 만든 이유는 일반적으로 속성이 하나도 없는 빈 객체로 타입을 선언할 일이 없기 때문이다.
+그래서 빈 객체 타입을 특별하게 null, undefiend를 제외한 모든 값을 가르키는 타입으로 만들었다.
+
+### 1. 인터페이스 선언 병합
+인터페이스는 서로 합칠 수 있다.
+```ts
+interface Merge{
+    one: string
+}
+interface Merge{
+    two: number
+}
+
+const example:Merge={
+    one:'1',
+    two:2
+}
+```
+이렇게 같은 이름으로 여러 인터페이스를 선언할 수 있다. 이러면 모든 Merge 인터페이스가 하나로 합쳐진다.  
+이를 선언 병합(declaration merging)이라고 부른다. 지금은 Merge 인터페이스에 one, two 속성이 병합되어 있는것이다.  
+이런기능을 만들어둔 이유는 나중에 다른 사람이 인터페이스를 확장할 수 있도록 하기 위함이다.  
+
+JS는 다른 언어에 비해 객체를 수정하는 것이 자유롭다. 따라서 다른 라이브러리의 객체를 수정하는 경우가 많은데 이렇게 객체를 수정하게 되면 TS에서 정의한 객체 타입과 달라져서 에러가 발생하는 경우가 생긴다.  
+따라서 TS에서 정의한 객체 타입을 수정할 수 있는 기능이 필요하게 되었고, 이것이 인터페이스가 합쳐지는 이유다.  
+사람이 수정해도 되는 객체의 타입을 인터페이스로 선언해주면 다른 사람은 언제든지 같은 이름의 인터페이스를 만들어 타입을 수정할 수 있다. 
+
+다만 인터페이스간에 속성이 겹치는데 타입이 다를 경우에는 에러가 발생한다.
+```ts
+interface Merge{
+    one: string
+}
+interface Merge{
+    one: number // Subsequent property declarations must have the same type.  Property 'one' must be of type 'string', but here has type 'number'.(2717)
+}
+```
+### 2.네임스페이스
+인터페이스 병합에는 큰 단점이 있다. 바로 남이 만든 인터페이스와 의도치 않게 병합될수 있다는 점이다. TS로 프로그래밍 할 때는 다른 라이브러리를 설치해서 사용하는 경우가 많은데, 이때 다른 사람이 만든 인터페이스와 내 인터페이스가 우연히 겹칠수도 있다는 것이다.  
+이럴 때를 대비해서 네임스페이스(namespace)가 있다.
+```ts
+namespace Example{
+    interface Inner{
+        test: string
+    }
+    type test2 = number
+}
+
+const ex1:Example.Inner ={ // Namespace 'Example' has no exported member 'Inner'
+    test:'hello'
+}
+const ex2:Example.test2 = 123; //Namespace 'Example' has no exported member 'test2'.
+```
+Example 네임스페이스를 선언하고 그 안에 Inner 인터페이스와 test2라는 타입 별칭이 있다.  
+각각 Example.Inner, Example.type2로 접근할 수 있고 Example 네임스페이스가 있으므로 다른 사람이 만든 Inner나 test2 타입과 겹치지 않는다.  
+
+그런데 정작 Example.Inner, Example.type2타입을 ex1, ex2 면수에 적용하려고 하니까 오류가 발생한다.  
+네임스페이스 내우 타입을 사용하려면 다음과 같이 export를 해야한다.
+```ts
+namespace Example{
+    export interface Inner{
+        test: string
+    }
+    export type test2 = number
+}
+
+const ex1:Example.Inner ={ 
+    test:'hello'
+}
+const ex2:Example.test2 = 123; 
+```
+네임스페이스는 중첩도 가능하다.
+```ts
+namespace Example{
+
+    export namespace Outer{
+        export interface Inner{
+            test:string
+        }
+        export type test2 = number
+    }
+    const ex1:Example.Outer.Inner ={
+        test:'hello'
+    }
+    const ex2:Example.Outer.test2 = 123
+}
+```
+네임스페이스를 내부에서 실제 값을 선안한 경우 네임스페이스 자체를 자바스크립트 값으로 사용할 수도 있다.
+```ts
+namespace Ex{
+    export const a = 'real'
+}
+const a = Ex //{a:'real'}
+const b = Ex.a // 'real'
+const c = Ex['a'] //'real
+```
+네임스페이스도 이름이 겹치는 경우 병합된다. 내부에 같은 이름의 인터페이스가 있다면 합쳐지고, 내부에 같은 이름의 타입 별칭이 있다면 오류가 발생한다.
+```ts
+namespace Example{
+    export interface Inner{
+        test:string
+    }
+    export type test2 = number; // Duplicate identifier 'test2'.
+}
+namespace Example{
+    export interface Inner{
+        test1: boolean
+    }
+    export type test2 = number; // Duplicate identifier 'test2'.
+}
+
+const ex1:Example.Inner={
+    test:'hello',
+    test1:true
+}
+```
+이렇게 네임스페이스도 병합되는 특성이 있으므로 다른 사람이 이름이 같은 네임스페이스를 만든다면 원하지 않아도 합쳐지는 이슈가 발생할 수 있다.  
+이를 방지하기 위해 모듈 파일이 있는데, 이건 다음에 알아본다.
